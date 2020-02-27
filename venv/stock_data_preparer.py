@@ -1,3 +1,4 @@
+import pandas as pd
 import datetime
 import calendar
 import numpy as np
@@ -9,7 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.utils import class_weight
 
 save_path = "C:/Users/Mikkel/Desktop/machine learning/stock_prediction/"
-
+save_path_work  =
 def pickle_save(to_save,save_path):
     with open(save_path, "wb") as fp:
         pickle.dump(to_save, fp)

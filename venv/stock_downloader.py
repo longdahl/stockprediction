@@ -22,7 +22,7 @@ def pickle_load(load_path):
         b = pickle.load(fp)
     return b
 
- 
+
 """
 simpel struktur: 0/1 binary prediction structure (win or lose).
 one model for each stock
