@@ -9,8 +9,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.decomposition import PCA
 from sklearn.utils import class_weight
 
-save_path = "C:/Users/Mikkel/Desktop/machine learning/stock_prediction/"
-save_path_work  =
+#TODO change format of stock data
+
+
 def pickle_save(to_save,save_path):
     with open(save_path, "wb") as fp:
         pickle.dump(to_save, fp)
@@ -21,13 +22,6 @@ def pickle_load(load_path):
     with open(load_path, "rb") as fp:
         b = pickle.load(fp)
     return b
-
-def standardize(train_features,val_features,test_features):
-    scaler = StandardScaler()
-    train_features = scaler.fit_transform(train_features)
-    val_features  = scaler.transform(val_features)
-    test_features = scaler.transform(test_features)
-    return train_features, val_features, test_features
 
 def createPCA(label,features, save_path, max_comp):
     features = standardize(features)
@@ -54,12 +48,6 @@ def createPCA(label,features, save_path, max_comp):
     pickle_save(var_expl, save_path + "PCA_var_explained_sp500.txt")
     principalComponents.to_pickle(save_path + "PCA_sp500.txt")
 
-def create_train_val_test(data,test_size):
-
-    train,val = np.array(train_test_split(np.array(data),test_size= test_size,shuffle= False))
-    train,test =  np.array(train_test_split(np.array(train),test_size= test_size,shuffle= False))
-
-    return train,val,test
 
 def binary_upsampling(train):
 
@@ -78,33 +66,6 @@ def binary_upsampling(train):
 
     upsampled = resample(replace = True,n_samples = samples,random_state = 27)
     return upsampled
-
-def data_preparer(data):
-
-
-    data = data.sample(frac=1).reset_index(drop=True)
-
-    #remove index columns if present
-
-    if 'Unnamed: 0' in data.columns:
-        data = data.drop(['Unnamed: 0'],axis = 1)
-
-    if 'index' in data.columns:
-        data = data.drop(['index'],axis = 1)
-
-    train,val,test = create_train_val_test(data,0.2)
-
-    train_labels = np.array(train.pop('result'))
-    val_labels = np.array(val.pop('result'))
-    test_labels = np.array(test.pop('result'))
-
-    train_features = np.array(train)
-    val_features = np.array(val)
-    test_features = np.array(test)
-
-    train_features,val_features,test_features = standardize(train_features,val_features,test_features)
-
-    return train_labels,val_labels,test_labels,train_features,val_features,test_features
 
 def date_preparer(data):
 
@@ -128,10 +89,13 @@ def date_preparer(data):
 
     data_new = pd.concat([data,year_dummies,month_dummies,weekday_dummies,elapsed_days],axis = 1,ignore_index = False)
 
-    data_new.columns = [data.columns + year_dummies.columns + month_dummies.columns + weekday_dummies.columns + elapsed_days.columns]
 
     return data_new
 
+
+
+save_path = "C:/Users/Mikkel/Desktop/machine learning/stock_prediction/"
+#save_path_work  =
 
 
 data = pd.read_pickle(save_path + "sp_500_data_2019okt2020feb18.txt")
@@ -139,6 +103,5 @@ data = pd.read_pickle(save_path + "sp_500_data_2019okt2020feb18.txt")
 data = date_preparer(data)
 
 
-train_labels,val_labels,test_labels,train_features,val_features,test_features = data_preparer(data)
-
+data.to_pickle(save_path + "sp_500_data_2019okt2020feb18_ver2.txt")
 
