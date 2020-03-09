@@ -6,7 +6,6 @@ import bs4 as bs
 import pickle
 import requests
 from sklearn.metrics import precision_recall_fscore_support as score
-from keras.callbacks import Earlystopping,ModelCheckpoint
 from sklearn.decomposition import PCA
 from sklearn.utils import class_weight
 
@@ -89,23 +88,11 @@ def remove_delisted_stocks(tickers):
     return tickers
 #tickers = remove_delisted_stocks(tickers)
 
-
-
-
-
-#pickle_save(tickers,"C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_companies.txt")
-stock_names = pickle_load("C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_companies.txt")
-print(stock_names)
-#print(len(b))
-
-
-
-
-def download_stock_data(stock_names):
+def download_stock_data(stock_names,SD,ED):
     complete_table = pd.DataFrame(columns=["result", "date", "open", "high_t1", "low_t1", "AdjClose_t1", "volume_t1", "stock"])
     for name in stock_names:
         print(name)
-        stock_df = yf.download(name,start='2019-10-01',end='2020-02-18',progress=False,interval='1d')
+        stock_df = yf.download(name,start=SD,end=ED,progress=False,interval='1d')
 
         t1_info = stock_df.iloc[:-1, [1,2,4,5]].reset_index(drop=True)
         open = stock_df.iloc[1:, [0]].reset_index(drop=True)
@@ -116,14 +103,21 @@ def download_stock_data(stock_names):
         table.columns = ["result","date","open","high_t1","low_t1","AdjClose_t1","volume_t1","stock"]
         complete_table = pd.concat([complete_table, table], axis=0, ignore_index=True)
     return complete_table
-#complete_table = download_stock_data(stock_names)
+#complete_table = download_stock_data(stock_names,'2019-10-01','2020-02-18')
 #print(complete_table.shape)
 
 #complete_table.to_pickle("C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_data_2019okt2020feb18.txt")
 
-stock_table = pickle_load("C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_data_2019okt2020feb18.txt")
+#stock_table = pickle_load("C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_data_2019okt2020feb18.txt")
 
-stock_table = pd.DataFrame(stock_table)
+#stock_table = pd.DataFrame(stock_table)
+
+#pickle_save(tickers,"C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_companies.txt")
+stock_names = pickle_load("C:/Users/Mikkel/Desktop/machine learning/stock_prediction/sp_500_companies.txt")
+print(stock_names)
+#print(len(b))
+
+
 
 
 

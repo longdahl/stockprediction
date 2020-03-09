@@ -39,6 +39,12 @@ def create_train_val_test(data,test_size):
 
     return train,val,test
 
+def create_train_val(data,val_size):
+
+    train,val = np.array(train_test_split(np.array(data),test_size= test_size,shuffle= False))
+
+    return train,val
+
 def data_preparer(data,test_size):
 
     #shuffle data
@@ -60,11 +66,44 @@ def data_preparer(data,test_size):
 
     train_features = np.delete(train, 0, axis=1)
     val_features = np.delete(val, 0, axis=1)
+
     test_features = np.delete(test, 0, axis=1)
 
     train_features,val_features,test_features = standardize(train_features,val_features,test_features)
 
     return train_labels,val_labels,test_labels,train_features,val_features,test_features
+
+def data_preparer_no_test(data,val_size,test_data):
+    #shuffle data
+    data = data.sample(frac=1).reset_index(drop=True)
+    test_data = test_data.sample(frac=1).reset_index(drop=True)
+    #remove index columns if present
+
+    if 'Unnamed: 0' in data.columns:
+        data = data.drop(['Unnamed: 0'],axis = 1)
+    if 'index' in data.columns:
+        data = data.drop(['index'],axis = 1)
+    if 'Unnamed: 0' in test_data.columns:
+        test_data = test_data.drop(['Unnamed: 0'],axis = 1)
+
+    if 'index' in test_data.columns:
+        test_data = test_data.drop(['index'],axis = 1)
+
+    train,val = create_train_val(data,test_size)
+    test = np.array(test_data)
+
+    train_labels = train[:,0]
+    val_labels = val[:,0]
+    test_labels = test[:, 0]
+
+    train_features = np.delete(train, 0, axis=1)
+    val_features = np.delete(val, 0, axis=1)
+    test_features = np.delete(test, 0, axis=1)
+
+    train_features, val_features, test_features = standardize(train_features, val_features, test_features)
+
+    return train_labels, val_labels, test_labels, train_features, val_features, test_features
+
 
 def make_model(train_features):
     tf.compat.v1.reset_default_graph()
@@ -103,7 +142,7 @@ def train_single_model(train_features,train_labels,val_features,val_labels,test_
         train_features,
         train_labels,
         batch_size=BATCH_SIZE,
-        epcchs = EPOCHS,
+        epochs = EPOCHS,
         callbacks = callbacks,
         #class_weight = class_weights,
         validation_data = (val_features,val_labels))
@@ -122,7 +161,7 @@ def make_roc_plot(predicts,test_labels,modelName,filepath):
     plt.ylim([0,1])
     plt.ylabel('True positive rate')
     plt.xlabel('False positive rate')
-    #plt.show
+    plt.show
     plt.savefig(filepath + modelName + ".png")
     plt.close()
 
@@ -133,7 +172,7 @@ def save_model_results(predicts,test_labels,modelName,filepath,intervals):
 
     prob = [x / intervals for x in range(1,intervals,1)]
 
-    file1.write("Model performance for model ",modelName)
+    file1.write("Model performance for model " + modelName)
     file1.write("\n")
 
 
@@ -163,38 +202,56 @@ def simple_bagging(n,train_features,train_labels,val_features,val_labels,test_fe
         predicts.append(test_predict)
     predicts = np.sum(predicts,0)
     predicts = predicts / n
+
+    test_labels = np.int32(test_labels)
+    predicts = np.float64(predicts)
+
     save_model_results(predicts,test_labels,modelName,filepath,print_intervals)
 
     np.savetxt(filepath + modelName + ".csv",predicts,delimiter= ",")
 
     return predicts
 
-def model_constructor(baggingN,filepath,BATCH_SIZE,EPOCHS,PATIENCE,print_intervals,dataName,test_size):
+def model_constructor(data,test_data,baggingN,filepath,BATCH_SIZE,EPOCHS,PATIENCE,print_intervals,dataName,test_size):
 
-    data = pd.read_pickle(filepath + dataName + ".txt")
-
-    train_labels, val_labels, test_labels, train_features, val_features, test_features = data_preparer(data,test_size)
-
+    #train_labels, val_labels, test_labels, train_features, val_features, test_features = data_preparer(data,test_size)
+    train_labels, val_labels, test_labels, train_features, val_features, test_features = data_preparer_no_test(data, test_size,test_data)
     modelName = dataName + "_ANN with num bagging: " + str(baggingN)
 
     predicts = simple_bagging(baggingN,train_features,train_labels,val_features,val_labels,test_features,test_labels,filepath,modelName,BATCH_SIZE,EPOCHS,PATIENCE,print_intervals)
 
-    results_file = pd.concat([pd.Series(test_labels),pd.Dataframe(predicts)],axis = 1)
+    results_file = pd.concat([pd.Series(test_labels),pd.DataFrame(predicts),pd.DataFrame(test_features)],axis = 1)
+
+    results_file.columns = ["test_labels","predicts"] + list(test_data.columns[1::])
+
+    sorted_res = results_file.sort_values('predicts', axis=0, ascending=False)
 
     results_file.to_pickle(filepath + "Resultsfile:" + modelName + ".txt")
 
-    return results_file
+    return predicts,results_file
+
+def trading_simulator(simulation_days,baggingN,filepath,BATCH_SIZE,EPOCHS,PATIENCE,print_intervals,dataName,test_size):
+
+    load_data = pd.read_pickle(filepath + dataName + ".txt")
+    last_day = max(load_data['Elapsed_days'])
+    for i,sim_day in enumerate(range(last_day - simulation_days,last_day)):
+        print("simulation day: ", str(i))
+        data = load_data.loc[load_data['Elapsed_days'] <= sim_day]
+        test_data = load_data.loc[load_data['Elapsed_days'] == sim_day + 1]
+        predicts,results_file = model_constructor(data,test_data,baggingN, filepath, BATCH_SIZE, EPOCHS, PATIENCE, print_intervals, dataName, test_size)
+    return predicts
 
 
+simulation_days = 1
 baggingN = 1
 filepath = "C:/Users/Mikkel/Desktop/machine learning/stock_prediction/"
 BATCH_SIZE = 100
-EPOCHS = 50
+EPOCHS = 20
 PATIENCE = 10
 print_intervals = 10
 dataName = "sp_500_data_2019okt2020feb18_ver2"
 test_size = 0.2
 
-results_file = model_constructor(baggingN,filepath,BATCH_SIZE,EPOCHS,PATIENCE,print_intervals,dataName,test_size)
+results_file = trading_simulator(simulation_days,baggingN,filepath,BATCH_SIZE,EPOCHS,PATIENCE,print_intervals,dataName,test_size)
 
 

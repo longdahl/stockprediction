@@ -4,8 +4,10 @@ import calendar
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import precision_recall_fscore_support as score
 from sklearn.model_selection import train_test_split
+from sklearn.utils import resample
 from sklearn.decomposition import PCA
 from sklearn.utils import class_weight
 
@@ -22,6 +24,14 @@ def pickle_load(load_path):
     with open(load_path, "rb") as fp:
         b = pickle.load(fp)
     return b
+
+def standardize(train_features,val_features,test_features):
+    scaler = StandardScaler()
+    print(type(train_features))
+    train_features = scaler.fit_transform(train_features)
+    val_features  = scaler.transform(val_features)
+    test_features = scaler.transform(test_features)
+    return train_features, val_features, test_features
 
 def createPCA(label,features, save_path, max_comp):
     features = standardize(features)
@@ -56,11 +66,11 @@ def binary_upsampling(train):
 
     if num_0 > num_1:
         print("upsampling number of ones")
-        samples = num0
+        samples = num_0
 
-    elif num_1 < num_0:
+    elif num_1 > num_0:
         print("upsampling number of ones")
-        samples = num0
+        samples = num_1
     else:
         print("train_features = np.array(train)No upsampling required")
 
@@ -83,16 +93,19 @@ def date_preparer(data):
 
     year_dummies.columns = ["year_dummy_" + str(x) for x in range(earliest_date.year + 1, earliest_date.year + 1 + year_dummies.shape[1])]
 
+
     elapsed_days = pd.DataFrame([(x - earliest_date).days for x in data['date']])
     elapsed_days.columns = ["Elapsed_days"]
-    data = data.drop(['date'],axis = 1)
 
-    data_new = pd.concat([data,year_dummies,month_dummies,weekday_dummies,elapsed_days],axis = 1,ignore_index = False)
+    stock_dummy = pd.get_dummies(data['stock'],drop_first=False)
+
+    data = data.drop(['date'],axis = 1)
+    data = data.drop(['stock'], axis=1)
+
+    data_new = pd.concat([data,year_dummies,month_dummies,weekday_dummies,elapsed_days,stock_dummy],axis = 1,ignore_index = False)
 
 
     return data_new
-
-
 
 save_path = "C:/Users/Mikkel/Desktop/machine learning/stock_prediction/"
 #save_path_work  =
@@ -102,6 +115,6 @@ data = pd.read_pickle(save_path + "sp_500_data_2019okt2020feb18.txt")
 
 data = date_preparer(data)
 
-
 data.to_pickle(save_path + "sp_500_data_2019okt2020feb18_ver2.txt")
 
+data = pd.read_pickle(save_path + "sp_500_data_2019okt2020feb18_ver2.txt")
